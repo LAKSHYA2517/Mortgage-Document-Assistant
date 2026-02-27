@@ -1,0 +1,6 @@
+llama-index
+unstructured[pdf]
+llama-index-readers-file
+llama-index-embeddings-huggingface
+llama-index-vector-stores-chroma
+chromadb
