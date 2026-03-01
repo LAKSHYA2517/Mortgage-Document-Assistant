@@ -46,3 +46,27 @@ def setup_query_engine():
     )
     
     return query_engine
+
+if __name__ == "__main__":
+    engine = setup_query_engine()
+    
+    # 3. Interactive Loop
+    print("\n" + "="*50)
+    print("Mortgage Intelligence System Initialized.")
+    print("Type 'exit' to quit.")
+    print("="*50 + "\n")
+    
+    while True:
+        user_query = input("\nUnderwriter Question: ")
+        if user_query.lower() in ['exit', 'quit']:
+            break
+            
+        print("Searching documents and generating answer...\n")
+        response = engine.query(user_query)
+        
+        print(f"System Answer: {response}\n")
+        
+        # Optional: Print the sources to verify accuracy
+        print("--- Sources Used ---")
+        for i, node in enumerate(response.source_nodes):
+            print(f"Source {i+1} (Score: {node.score:.3f}): {node.metadata.get('doc_type', 'Unknown Doc')} - {node.text[:100]}...")
