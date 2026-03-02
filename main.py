@@ -16,20 +16,7 @@ UPLOAD_DIR="./temp_upload"
 
 os.makedirs(UPLOAD_DIR,exist_ok=True)
 
-app=FastAPI(title="Mortgage Document Assistant",version="1.0")
-
-#pydantic models
-class QueryRequest(BaseModel):
-    question:str
-class SourceNode(BaseModel):
-    text_snippet: str
-    doc_type: str
-    score: float
-class QueryResponse(BaseModel):
-    answer:str
-    sources:list[SourceNode]
-
-#it loades once
+#Global engine initialization
 engine=None
 
 @asynccontextmanager
@@ -67,13 +54,28 @@ async def lifespan(app: FastAPI):
 
     qa_prompt_tmpl=PromptTemplate(qa_prompt_tmpl_str)
 
-    query_engine = index.as_query_engine(
+    engine = index.as_query_engine(
         llm=llm,
         similarity_top_k=5, 
         text_qa_template=qa_prompt_tmpl
     )
     
-    return query_engine
+    print("RAG engine initialized successfully!")
+    yield
+    print("Shutting down RAG engine...")
+
+app=FastAPI(title="Mortgage Document Assistant",version="1.0",lifespan=lifespan)
+
+#pydantic models
+class QueryRequest(BaseModel):
+    question:str
+class SourceNode(BaseModel):
+    text_snippet: str
+    doc_type: str
+    score: float
+class QueryResponse(BaseModel):
+    answer:str
+    sources:list[SourceNode]
 
 #endpoints
 @app.get("/")
@@ -93,15 +95,15 @@ async def upload_document(file:UploadFile=File(...)):
 
     #saving uploaded file temporary
     with open(file_path,"wb") as buffer:
-        shutil.copy(file.file,buffer)
+        shutil.copyfileobj(file.file,buffer)
     
     try:
         elements=partition_pdf(
         filename=file_path,
-        strategy="hi-res",
+        strategy="fast",#changed from hi_res
         infer_table_structure=True,
         chunking_strategy="by_title",
-        max_character=1500
+        max_characters=1500
         )
     
         llama_docs=[]
@@ -125,7 +127,7 @@ async def upload_document(file:UploadFile=File(...)):
         db=chromadb.PersistentClient(path=DB_PATH)
         chroma_collection=db.get_or_create_collection(COLLECTION_NAME)
         vector_store=ChromaVectorStore(chroma_collection=chroma_collection)
-        storage_context=StorageContext(vector_stores=vector_store)
+        storage_context=StorageContext.from_defaults(vector_store=vector_store)
         embed_model=HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
 
         VectorStoreIndex.from_documents(
