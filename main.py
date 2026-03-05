@@ -9,6 +9,14 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.ollama import Ollama
 from unstructured.partition.pdf import partition_pdf
 from contextlib import asynccontextmanager
+from fastapi import Depends
+from sqlalchemy.orm import Session
+import time
+import models
+from database import engine, get_db
+
+# Create the database tables automatically on startup
+models.Base.metadata.create_all(bind=engine)
 
 DB_PATH="./chroma_db"
 COLLECTION_NAME="mortgage_docs"
@@ -146,21 +154,42 @@ async def upload_document(file:UploadFile=File(...)):
         if os.path.exists(file_path):
             os.remove(file_path)
 
-@app.post("/query",response_model=QueryResponse)
-async def query_documents(request:QueryRequest):
-    """Answer the question based on document"""
-    if not engine:
-        raise HTTPException(status_code=500,detail="Engine not initialize")
-    
+@app.post("/query", response_model=QueryResponse)
+async def query_documents(request: QueryRequest, db: Session = Depends(get_db)):
+    """Answers underwriter questions and logs the transaction for compliance."""
+    if not engine: # referring to your global RAG engine from earlier
+        raise HTTPException(status_code=500, detail="Engine not initialized.")
+        
+    start_time = time.time()
+        
     try:
-        response=engine.query(request.question)
+        # 1. Get the RAG response
+        response = engine.query(request.question)
+        
+        # 2. Extract sources
         sources = []
+        source_names = []
         for node in response.source_nodes:
+            doc_name = node.metadata.get("source_file", "Unknown")
             sources.append(SourceNode(
                 text_snippet=node.text[:200] + "...",
-                doc_type=node.metadata.get("source_file", "Unknown"),
+                doc_type=doc_name,
                 score=node.score or 0.0
             ))
+            source_names.append(doc_name)
+            
+        processing_time = (time.time() - start_time) * 1000
+            
+        # 3. Save to Compliance Audit Log
+        db_log = models.AuditLog(
+            user_query=request.question,
+            ai_response=str(response),
+            sources_cited=", ".join(source_names),
+            processing_time_ms=processing_time
+        )
+        db.add(db_log)
+        db.commit()
+        db.refresh(db_log)
             
         return QueryResponse(answer=str(response), sources=sources)
         

@@ -9,3 +9,5 @@ fastapi
 pydantic 
 uvicorn 
 python-multipart
+sqlalchemy 
+psycopg2-binary
