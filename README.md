@@ -149,3 +149,5 @@ App runs at:
 
 
 ---
+##  Dashboard
+<img width="960" height="496" alt="image" src="https://github.com/user-attachments/assets/554205d9-0739-4a90-b17f-312c7d4a102d" />
