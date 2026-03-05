@@ -1,6 +1,7 @@
 import os
 import shutil
 from fastapi import FastAPI,UploadFile,File,HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import chromadb
 from llama_index.core import VectorStoreIndex,PromptTemplate,Document,StorageContext
@@ -73,6 +74,14 @@ async def lifespan(app: FastAPI):
     print("Shutting down RAG engine...")
 
 app=FastAPI(title="Mortgage Document Assistant",version="1.0",lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],#frontend endpoint
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 #pydantic models
 class QueryRequest(BaseModel):
