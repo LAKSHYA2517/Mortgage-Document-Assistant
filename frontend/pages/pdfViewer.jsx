@@ -4,6 +4,7 @@ import axios from 'axios';
 export default function PdfViewer() {
   const [pdfUrl, setPdfUrl] = useState(null); 
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
   const fileInputRef = useRef(null);
 
   const handleFileUpload = async (event) => {
@@ -14,6 +15,7 @@ export default function PdfViewer() {
     const localUrl = URL.createObjectURL(file);
     setPdfUrl(localUrl);
     setIsUploading(true);
+    setUploadStatus(null);
 
     // 2. Send the file to your FastAPI backend to be parsed and vectorized
     const formData = new FormData();
@@ -25,10 +27,15 @@ export default function PdfViewer() {
           'Content-Type': 'multipart/form-data',
         },
       });
-      alert(`Success: ${response.data.message}`);
+      const uploadMessage = response?.data?.message || response?.data?.messages || 'Document uploaded successfully.';
+      setUploadStatus({ type: 'success', message: uploadMessage });
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Error uploading document to the AI engine.");
+      const backendDetail = error?.response?.data?.detail;
+      setUploadStatus({
+        type: 'error',
+        message: backendDetail || 'Error uploading document to the AI engine.'
+      });
       setPdfUrl(null); // Reset if upload fails
     } finally {
       setIsUploading(false);
@@ -59,6 +66,18 @@ export default function PdfViewer() {
           {isUploading ? 'Ingesting...' : 'Upload PDF'}
         </button>
       </div>
+
+      {uploadStatus && (
+        <div
+          className={`mx-3 mt-3 rounded-lg border px-3 py-2 text-xs ${
+            uploadStatus.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-rose-200 bg-rose-50 text-rose-700'
+          }`}
+        >
+          {uploadStatus.message}
+        </div>
+      )}
 
       <div className="flex-1 w-full h-full p-3">
         {pdfUrl ? (

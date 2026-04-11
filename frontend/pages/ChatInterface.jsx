@@ -33,9 +33,11 @@ export default function ChatInterface() {
 
     } catch (error) {
       console.error("Error querying the RAG engine:", error);
+      const backendDetail = error?.response?.data?.detail;
+      const fallbackMessage = "Could not connect to the AI engine. Please ensure the backend and Ollama are running.";
       setMessages((prev) => [...prev, { 
         role: 'assistant', 
-        content: "Error: Could not connect to the AI engine. Please ensure the backend and Ollama are running." 
+        content: `Error: ${backendDetail || fallbackMessage}` 
       }]);
     } finally {
       setIsLoading(false);

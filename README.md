@@ -98,6 +98,18 @@ Run API:
 uvicorn main:app --reload
 ```
 
+On Windows, you can start Ollama and the backend together with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-project.ps1
+```
+
+To start Ollama, the backend, and the frontend in one command:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-project.ps1 -StartFrontend
+```
+
 ---
 
 ### 3️ Frontend Setup
